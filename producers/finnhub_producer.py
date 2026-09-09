@@ -56,6 +56,12 @@ def on_message(ws, message):
 
     logger.debug(f"Received: {data}")
 
+    if isinstance(data, dict) and data.get('type') == 'ping':
+        # Finnhub sends an application-level ping every few seconds.
+        # The websocket-client library already handles transport-level
+        # keepalives; no response is required for this message.
+        return
+
     trades = data.get('data', []) if isinstance(data, dict) else []
     for trade in trades:
         try:
@@ -87,11 +93,6 @@ def on_message(ws, message):
         except Exception as e:
             logger.error(f"Failed to send to Kafka: {e}")
 
-    try:
-        producer.flush()
-    except Exception as e:
-        logger.error(f"Failed to flush Kafka producer: {e}")
-
 
 def on_error(ws, error):
     logger.error(f"Finnhub WebSocket error: {error}")
@@ -99,6 +100,10 @@ def on_error(ws, error):
 
 def on_close(ws, close_status_code, close_msg):
     logger.warning(f"Disconnected from Finnhub: {close_status_code} - {close_msg}")
+    try:
+        producer.flush()
+    except Exception as e:
+        logger.error(f"Failed to flush Kafka producer on disconnect: {e}")
 
 
 def run():
@@ -112,7 +117,11 @@ def run():
                 on_error=on_error,
                 on_close=on_close
             )
-            ws.run_forever()
+            ws.run_forever(
+                ping_interval=30,
+                ping_timeout=10,
+                reconnect=FINNHUB_RECONNECT_DELAY
+            )
         except Exception as e:
             logger.error(f"Finnhub producer crashed: {e}")
 
