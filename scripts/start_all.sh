@@ -2,7 +2,9 @@
 set -e
 
 # Load environment variables (Finnhub key, S3 bucket, etc.)
+set -a
 source ~/.env
+set +a
 
 PROJECT_DIR=~/kafka-stock-market-portfolio
 cd ~/kafka_2.13-3.8.0

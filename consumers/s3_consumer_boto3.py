@@ -24,7 +24,7 @@ print("S3 consumer started. Waiting for messages...")
 
 for count, message in enumerate(consumer):
     timestamp = datetime.now(timezone.utc).strftime('%Y/%m/%d/%H%M%S_%f')
-    filename = f"raw/stock_market_{timestamp}_{count}.json"
+    filename = f"raw/{timestamp}_{count}.json"
 
     s3.put_object(
         Bucket=BUCKET_NAME,
