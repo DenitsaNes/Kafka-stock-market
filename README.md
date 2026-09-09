@@ -49,13 +49,13 @@ kafka-stock-market-portfolio/
 │   ├── finnhub_producer.py      # Streams BTC from Finnhub → Kafka (keyed by symbol)
 │   └── demo_metals_producer.py  # Streams synthetic metals → Kafka (keyed by symbol)
 ├── consumers/
-│   └── s3_consumer_boto3.py     # Kafka → S3 (raw JSON), s3-sink-consumer-group
+│   └── s3_consumer_boto3.py     # Kafka → S3 with retries + DLQ
 ├── dashboard/
-│   └── dashboard.py             # Streamlit live dashboard, dashboard-consumer-group
+│   └── dashboard.py             # Streamlit live dashboard with consumer reconnect
 └── scripts/
     ├── start_all.sh             # Start all services
     ├── stop_all.sh              # Stop all services
-    ├── create_topic.py          # Create demo_test topic with 4 partitions
+    ├── create_topic.py          # Create demo_test topic (4 partitions) + DLQ topic
     └── s3_json_to_parquet.py    # Batch conversion to Parquet
 ```
 

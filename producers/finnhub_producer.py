@@ -1,11 +1,19 @@
 import json
+import logging
 import os
+import time
 import websocket
 from kafka import KafkaProducer
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from schema import MarketTradeEvent
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv('FINNHUB_API_KEY')
 if not API_KEY:
@@ -14,20 +22,39 @@ if not API_KEY:
 KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'localhost:9092')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'demo_test')
 
-producer = KafkaProducer(
-    bootstrap_servers=[KAFKA_BROKER],
-    value_serializer=lambda x: json.dumps(x).encode('utf-8')
-)
+FINNHUB_RECONNECT_DELAY = 5
+KAFKA_RECONNECT_DELAY = 5
+
+
+def create_producer():
+    while True:
+        try:
+            return KafkaProducer(
+                bootstrap_servers=[KAFKA_BROKER],
+                value_serializer=lambda x: json.dumps(x).encode('utf-8')
+            )
+        except Exception as e:
+            logger.error(f"Failed to connect to Kafka: {e}")
+            logger.info(f"Retrying Kafka connection in {KAFKA_RECONNECT_DELAY}s...")
+            time.sleep(KAFKA_RECONNECT_DELAY)
+
+
+producer = create_producer()
 
 
 def on_open(ws):
-    print("Connected to Finnhub")
+    logger.info("Connected to Finnhub")
     ws.send(json.dumps({"type": "subscribe", "symbol": "BINANCE:BTCUSDT"}))
 
 
 def on_message(ws, message):
-    data = json.loads(message)
-    print(f"Received: {data}")
+    try:
+        data = json.loads(message)
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON from Finnhub: {e}")
+        return
+
+    logger.debug(f"Received: {data}")
 
     trades = data.get('data', []) if isinstance(data, dict) else []
     for trade in trades:
@@ -40,30 +67,51 @@ def on_message(ws, message):
                 source='finnhub'
             )
         except Exception as e:
-            print(f"Validation error (skipped): {trade} — {e}")
+            logger.warning(f"Validation error (skipped): {trade} — {e}")
             continue
 
         record = event.to_dict()
         key = record['symbol'].encode('utf-8')
-        producer.send(KAFKA_TOPIC, key=key, value=record)
+        try:
+            producer.send(KAFKA_TOPIC, key=key, value=record)
+        except Exception as e:
+            logger.error(f"Failed to send to Kafka: {e}")
 
-    producer.flush()
+    try:
+        producer.flush()
+    except Exception as e:
+        logger.error(f"Failed to flush Kafka producer: {e}")
 
 
 def on_error(ws, error):
-    print(f"Error: {error}")
+    logger.error(f"Finnhub WebSocket error: {error}")
 
 
 def on_close(ws, close_status_code, close_msg):
-    print("Disconnected from Finnhub")
+    logger.warning(f"Disconnected from Finnhub: {close_status_code} - {close_msg}")
 
 
-ws = websocket.WebSocketApp(
-    f"wss://ws.finnhub.io?token={API_KEY}",
-    on_open=on_open,
-    on_message=on_message,
-    on_error=on_error,
-    on_close=on_close
-)
+def run():
+    global producer
+    while True:
+        try:
+            ws = websocket.WebSocketApp(
+                f"wss://ws.finnhub.io?token={API_KEY}",
+                on_open=on_open,
+                on_message=on_message,
+                on_error=on_error,
+                on_close=on_close
+            )
+            ws.run_forever()
+        except Exception as e:
+            logger.error(f"Finnhub producer crashed: {e}")
 
-ws.run_forever()
+        logger.info(f"Reconnecting to Finnhub in {FINNHUB_RECONNECT_DELAY}s...")
+        time.sleep(FINNHUB_RECONNECT_DELAY)
+
+        # Recreate the producer in case Kafka went down while we were running.
+        producer = create_producer()
+
+
+if __name__ == '__main__':
+    run()

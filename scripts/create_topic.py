@@ -4,20 +4,27 @@ from kafka.admin import KafkaAdminClient, NewTopic
 
 KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'localhost:9092')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'demo_test')
+DLQ_TOPIC = f"{KAFKA_TOPIC}.dlq"
 
-admin = KafkaAdminClient(bootstrap_servers=[KAFKA_BROKER], client_id='topic-creator')
+def create_topic(admin, name, partitions, replication_factor=1):
+    existing = admin.list_topics()
+    if name in existing:
+        print(f"Topic '{name}' already exists. Delete it first if you want to change partitions.")
+        return False
 
-topic = NewTopic(
-    name=KAFKA_TOPIC,
-    num_partitions=4,
-    replication_factor=1
-)
+    topic = NewTopic(
+        name=name,
+        num_partitions=partitions,
+        replication_factor=replication_factor
+    )
+    admin.create_topics([topic])
+    print(f"Created topic '{name}' with {partitions} partitions and replication factor {replication_factor}")
+    return True
 
-existing = admin.list_topics()
-if KAFKA_TOPIC in existing:
-    print(f"Topic '{KAFKA_TOPIC}' already exists. Delete it first if you want to change partitions.")
-    sys.exit(0)
 
-admin.create_topics([topic])
-print(f"Created topic '{KAFKA_TOPIC}' with 4 partitions and replication factor 1")
-admin.close()
+try:
+    admin = KafkaAdminClient(bootstrap_servers=[KAFKA_BROKER], client_id='topic-creator')
+    create_topic(admin, KAFKA_TOPIC, 4)
+    create_topic(admin, DLQ_TOPIC, 1)
+finally:
+    admin.close()

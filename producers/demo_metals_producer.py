@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import random
 import sys
@@ -8,13 +9,30 @@ from kafka import KafkaProducer
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from schema import MarketTradeEvent
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'localhost:9092')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'demo_test')
 
-producer = KafkaProducer(
-    bootstrap_servers=[KAFKA_BROKER],
-    value_serializer=lambda x: json.dumps(x).encode('utf-8')
-)
+KAFKA_RECONNECT_DELAY = 5
+
+
+def create_producer():
+    while True:
+        try:
+            return KafkaProducer(
+                bootstrap_servers=[KAFKA_BROKER],
+                value_serializer=lambda x: json.dumps(x).encode('utf-8')
+            )
+        except Exception as e:
+            logger.error(f"Failed to connect to Kafka: {e}")
+            logger.info(f"Retrying Kafka connection in {KAFKA_RECONNECT_DELAY}s...")
+            time.sleep(KAFKA_RECONNECT_DELAY)
+
 
 METALS = {
     'GC=F': 2500.00,
@@ -23,7 +41,6 @@ METALS = {
     'PL=F': 950.00
 }
 
-# Use shorter, display-friendly names in the symbol field for consistency.
 DISPLAY_NAMES = {
     'GC=F': 'Gold (GC=F)',
     'SI=F': 'Silver (SI=F)',
@@ -33,7 +50,9 @@ DISPLAY_NAMES = {
 
 current_prices = METALS.copy()
 
-print("Starting demo metals producer...")
+logger.info("Starting demo metals producer...")
+
+producer = create_producer()
 
 while True:
     for symbol, base_price in METALS.items():
@@ -49,13 +68,22 @@ while True:
                 source='demo'
             )
         except Exception as e:
-            print(f"Validation error (skipped): {symbol} — {e}")
+            logger.warning(f"Validation error (skipped): {symbol} — {e}")
             continue
 
         record = event.to_dict()
         key = record['symbol'].encode('utf-8')
-        producer.send(KAFKA_TOPIC, key=key, value=record)
-        print(f"Sent demo: {record}")
+        try:
+            producer.send(KAFKA_TOPIC, key=key, value=record)
+            logger.info(f"Sent demo: {record}")
+        except Exception as e:
+            logger.error(f"Failed to send to Kafka: {e}")
+            producer = create_producer()
 
-    producer.flush()
+    try:
+        producer.flush()
+    except Exception as e:
+        logger.error(f"Failed to flush Kafka producer: {e}")
+        producer = create_producer()
+
     time.sleep(5)

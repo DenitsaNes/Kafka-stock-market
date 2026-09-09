@@ -1,10 +1,17 @@
 import json
+import logging
 import os
 import time
 from collections import deque, defaultdict
 import streamlit as st
 from kafka import KafkaConsumer
 import plotly.graph_objects as go
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 st.set_page_config(page_title="Crypto & Metals Dashboard", layout="wide")
 st.title("₿💰 Real-time Crypto & Metals Dashboard")
@@ -18,21 +25,36 @@ charts_placeholder = st.empty()
 
 prices_by_symbol = defaultdict(lambda: deque(maxlen=200))
 
-consumer = KafkaConsumer(
-    KAFKA_TOPIC,
-    bootstrap_servers=[KAFKA_BROKER],
-    value_deserializer=lambda x: json.loads(x.decode('utf-8')),
-    consumer_timeout_ms=1000,
-    auto_offset_reset='latest',
-    group_id='dashboard-consumer-group'
-)
+def create_consumer():
+    return KafkaConsumer(
+        KAFKA_TOPIC,
+        bootstrap_servers=[KAFKA_BROKER],
+        value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+        consumer_timeout_ms=1000,
+        auto_offset_reset='latest',
+        group_id='dashboard-consumer-group'
+    )
+
+
+consumer = create_consumer()
 
 render_counter = 0
 last_render_time = time.time()
 RENDER_INTERVAL = 5.0
 
 while True:
-    messages = consumer.poll(timeout_ms=1000)
+    try:
+        messages = consumer.poll(timeout_ms=1000)
+    except Exception as e:
+        logger.error(f"Kafka consumer error: {e}")
+        logger.info("Recreating Kafka consumer in 5s...")
+        time.sleep(5)
+        try:
+            consumer.close()
+        except Exception:
+            pass
+        consumer = create_consumer()
+        continue
 
     got_data = False
     if messages:
@@ -41,11 +63,14 @@ while True:
                 message = msg.value
 
                 # All messages are now normalized MarketTradeEvent records.
-                symbol = message.get('symbol', 'UNKNOWN')
-                price = float(message.get('price', 0))
-                if price:
-                    prices_by_symbol[symbol].append(price)
-                    got_data = True
+                try:
+                    symbol = message.get('symbol', 'UNKNOWN')
+                    price = float(message.get('price', 0))
+                    if price:
+                        prices_by_symbol[symbol].append(price)
+                        got_data = True
+                except Exception as e:
+                    logger.warning(f"Skipping malformed message: {message} — {e}")
 
     now = time.time()
     should_render = got_data and (now - last_render_time >= RENDER_INTERVAL)
