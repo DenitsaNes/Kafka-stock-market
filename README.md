@@ -1,4 +1,4 @@
-# Real-Time Crypto & Metals Data Pipeline
+# Real-Time Market Data Platform
 
 ![CI](https://github.com/DenitsaNes/Kafka-stock-market/actions/workflows/ci.yml/badge.svg)
 
@@ -42,7 +42,7 @@ graph LR
 ## Project Structure
 
 ```text
-kafka-stock-market-portfolio/
+real-time-market-data-platform/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml               # GitHub Actions CI
@@ -96,7 +96,7 @@ More advanced Athena analysis is shown in the [Advanced Analysis](#4-advanced-an
 Clone the repo and install dependencies:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/kafka-stock-market-portfolio.git
+git clone https://github.com/DenitsaNes/Kafka-stock-market.git
 cd kafka-stock-market-portfolio
 pip install -r requirements.txt
 ```
@@ -123,7 +123,7 @@ KAFKA_TOPIC=demo_test
 pip install -r requirements.txt
 ```
 
-5. Copy all project files to the EC2 instance, e.g. under `~/kafka-stock-market-portfolio/`.
+5. Copy all project files to the EC2 instance, e.g. under `~/real-time-market-data-platform/`.
 
 ---
 

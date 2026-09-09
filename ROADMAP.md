@@ -53,7 +53,7 @@ This roadmap lists the next improvements that will take the project from "good l
 
 ## Phase D: Production architecture documentation (1 day)
 
-8. **Document the production evolution**
+8. **Document the production evolution** ✅
    - Explain current architecture: single-node Kafka + Zookeeper on EC2.
    - Explain production target: Amazon MSK with replicated brokers, monitoring, and consumer groups.
    - Do not migrate to MSK unless you specifically want to spend time on AWS managed services.
@@ -84,6 +84,6 @@ These would distract from the core story or require infrastructure beyond the pr
 1. Phase A — publish the current working version with screenshots.
 2. Phase B — add partitions, validation, and DLQ.
 3. Phase C — add tests and CI.
-4. Phase D — document production architecture.
+4. Phase D — document production architecture ✅.
 
 This keeps each phase focused and gives you a stronger portfolio after every step.
