@@ -44,6 +44,7 @@ kafka-stock-market-portfolio/
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
+├── schema.py                    # Pydantic schema for MarketTradeEvent
 ├── producers/
 │   ├── finnhub_producer.py      # Streams BTC from Finnhub → Kafka (keyed by symbol)
 │   └── demo_metals_producer.py  # Streams synthetic metals → Kafka (keyed by symbol)
@@ -300,6 +301,7 @@ Remember to run `scripts/stop_all.sh` and delete the EC2 instance when not neede
 
 - Setting up and configuring a single-node Kafka + Zookeeper cluster on AWS EC2.
 - Streaming real-time data via WebSocket into Kafka.
+- Validating streaming events with a Pydantic schema.
 - Persisting streaming data to S3 with a Python consumer.
 - Building a live dashboard with Streamlit and Plotly.
 - Converting semi-structured JSON into columnar Parquet for analytics.

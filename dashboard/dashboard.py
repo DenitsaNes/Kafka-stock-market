@@ -40,19 +40,12 @@ while True:
             for msg in msgs:
                 message = msg.value
 
-                if isinstance(message, dict) and 'data' in message and isinstance(message['data'], list):
-                    for trade in message['data']:
-                        symbol = trade.get('s', 'UNKNOWN')
-                        price = float(trade.get('p', 0))
-                        if price:
-                            prices_by_symbol[symbol].append(price)
-                            got_data = True
-                else:
-                    symbol = message.get('s', 'UNKNOWN')
-                    price = float(message.get('p', 0))
-                    if price:
-                        prices_by_symbol[symbol].append(price)
-                        got_data = True
+                # All messages are now normalized MarketTradeEvent records.
+                symbol = message.get('symbol', 'UNKNOWN')
+                price = float(message.get('price', 0))
+                if price:
+                    prices_by_symbol[symbol].append(price)
+                    got_data = True
 
     now = time.time()
     should_render = got_data and (now - last_render_time >= RENDER_INTERVAL)

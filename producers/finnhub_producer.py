@@ -3,6 +3,10 @@ import os
 import websocket
 from kafka import KafkaProducer
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from schema import MarketTradeEvent
+
 API_KEY = os.getenv('FINNHUB_API_KEY')
 if not API_KEY:
     raise ValueError("FINNHUB_API_KEY environment variable is not set")
@@ -25,16 +29,23 @@ def on_message(ws, message):
     data = json.loads(message)
     print(f"Received: {data}")
 
-    # Finnhub returns a batch of trades under the 'data' key.
-    # Use the trade symbol as the Kafka key so all trades for the
-    # same symbol land in the same partition.
-    if isinstance(data, dict) and 'data' in data and isinstance(data['data'], list):
-        for trade in data['data']:
-            key = trade.get('s', 'unknown').encode('utf-8')
-            producer.send(KAFKA_TOPIC, key=key, value=trade)
-    else:
-        key = data.get('s', 'unknown').encode('utf-8')
-        producer.send(KAFKA_TOPIC, key=key, value=data)
+    trades = data.get('data', []) if isinstance(data, dict) else []
+    for trade in trades:
+        try:
+            event = MarketTradeEvent(
+                symbol=trade.get('s', ''),
+                price=float(trade.get('p', 0)),
+                volume=float(trade.get('v', 0)),
+                timestamp_ms=int(trade.get('t', 0)),
+                source='finnhub'
+            )
+        except Exception as e:
+            print(f"Validation error (skipped): {trade} — {e}")
+            continue
+
+        record = event.to_dict()
+        key = record['symbol'].encode('utf-8')
+        producer.send(KAFKA_TOPIC, key=key, value=record)
 
     producer.flush()
 

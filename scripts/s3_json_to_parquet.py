@@ -25,6 +25,18 @@ def list_raw_keys(date_str):
 
 
 def parse_message(value):
+    # Messages are now normalized MarketTradeEvent records with
+    # symbol, price, volume, timestamp_ms, and source keys.
+    if isinstance(value, dict) and 'symbol' in value:
+        return [{
+            'symbol': value['symbol'],
+            'price': float(value.get('price', 0)),
+            'volume': float(value.get('volume', 0)),
+            'timestamp_ms': value.get('timestamp_ms'),
+            'source': value.get('source', 'unknown')
+        }]
+
+    # Fallback for older batched Finnhub payloads still in S3.
     records = []
     if isinstance(value, dict) and 'data' in value and isinstance(value['data'], list):
         for trade in value['data']:
