@@ -63,7 +63,7 @@ def process_date(date_str):
         print(f"No records for {date_str}")
         return
 
-    df['timestamp'] = pd.to_datetime(df['timestamp_ms'], unit='ms', utc=True)
+    df['event_time'] = pd.to_datetime(df['timestamp_ms'], unit='ms', utc=True)
     df['date'] = date_str
 
     with tempfile.TemporaryDirectory() as tmpdir:

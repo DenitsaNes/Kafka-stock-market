@@ -173,7 +173,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS stock_market.trades (
   volume double,
   timestamp_ms bigint,
   source string,
-  timestamp timestamp
+  event_time timestamp
 )
 PARTITIONED BY (date string)
 ROW FORMAT SERDE 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'
@@ -196,16 +196,16 @@ Or use an AWS Glue Crawler pointing to `s3://YOUR_BUCKET_NAME/parquet/` to auto-
 Latest 10 trades:
 
 ```sql
-SELECT symbol, price, volume, timestamp
+SELECT symbol, price, volume, event_time
 FROM stock_market.trades
-ORDER BY timestamp DESC
+ORDER BY event_time DESC
 LIMIT 10;
 ```
 
 Average BTC price per minute:
 
 ```sql
-SELECT date_trunc('minute', timestamp) AS minute,
+SELECT date_trunc('minute', event_time) AS minute,
        avg(price) AS avg_price,
        count(*) AS trade_count
 FROM stock_market.trades
