@@ -5,21 +5,26 @@ from datetime import datetime, timezone
 import boto3
 import pandas as pd
 
-BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
-if not BUCKET_NAME:
-    raise ValueError("S3_BUCKET_NAME environment variable is not set")
-
 RAW_PREFIX = 'raw/'
 PARQUET_PREFIX = 'parquet/'
+
+
+def get_bucket_name():
+    bucket = os.getenv('S3_BUCKET_NAME')
+    if not bucket:
+        raise ValueError("S3_BUCKET_NAME environment variable is not set")
+    return bucket
+
 
 s3 = boto3.client('s3')
 
 
 def list_raw_keys(date_str):
+    bucket = get_bucket_name()
     prefix = f"{RAW_PREFIX}{date_str.replace('-', '/')}/"
     paginator = s3.get_paginator('list_objects_v2')
     keys = []
-    for page in paginator.paginate(Bucket=BUCKET_NAME, Prefix=prefix):
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         keys.extend(obj['Key'] for obj in page.get('Contents', []) if obj['Key'].endswith('.json'))
     return keys
 
@@ -68,7 +73,7 @@ def process_date(date_str):
     for i, key in enumerate(keys):
         if i > 0 and i % 50 == 0:
             print(f"Downloaded {i}/{len(keys)} raw files...")
-        response = s3.get_object(Bucket=BUCKET_NAME, Key=key)
+        response = s3.get_object(Bucket=get_bucket_name(), Key=key)
         value = json.loads(response['Body'].read().decode('utf-8'))
         records.extend(parse_message(value))
 
@@ -84,13 +89,14 @@ def process_date(date_str):
         local_path = os.path.join(tmpdir, 'output')
         df.to_parquet(local_path, partition_cols=['date'], index=False, engine='pyarrow')
 
+        bucket = get_bucket_name()
         for root, dirs, files in os.walk(local_path):
             for file in files:
                 local_file = os.path.join(root, file)
                 relative_path = os.path.relpath(local_file, local_path)
                 s3_key = f"{PARQUET_PREFIX}{relative_path}"
-                s3.upload_file(local_file, BUCKET_NAME, s3_key)
-                print(f"Uploaded: s3://{BUCKET_NAME}/{s3_key}")
+                s3.upload_file(local_file, bucket, s3_key)
+                print(f"Uploaded: s3://{bucket}/{s3_key}")
 
     print(f"Processed {len(df)} records for {date_str}")
 
