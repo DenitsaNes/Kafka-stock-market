@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from kafka import KafkaConsumer, KafkaProducer
 import boto3
 
+from consumers.s3_upload import upload_to_s3
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s'
@@ -20,7 +22,6 @@ KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'localhost:9092')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'demo_test')
 DLQ_TOPIC = f"{KAFKA_TOPIC}.dlq"
 
-MAX_RETRIES = 5
 BASE_DELAY = 1
 
 
@@ -55,26 +56,6 @@ def send_to_dlq(producer, original_message, error_reason):
         logger.error(f"Failed to send message to DLQ: {e}")
 
 
-def upload_to_s3(s3_client, key, body):
-    for attempt in range(MAX_RETRIES):
-        try:
-            s3_client.put_object(
-                Bucket=BUCKET_NAME,
-                Key=key,
-                Body=body
-            )
-            return True
-        except Exception as e:
-            delay = BASE_DELAY * (2 ** attempt)
-            logger.error(f"S3 upload failed (attempt {attempt + 1}/{MAX_RETRIES}): {e}")
-            if attempt < MAX_RETRIES - 1:
-                logger.info(f"Retrying in {delay}s...")
-                time.sleep(delay)
-            else:
-                logger.error("S3 upload exhausted all retries")
-                raise
-
-
 def run():
     s3 = boto3.client('s3')
     dlq_producer = create_dlq_producer()
@@ -89,7 +70,7 @@ def run():
                     timestamp = datetime.now(timezone.utc).strftime('%Y/%m/%d/%H%M%S_%f')
                     filename = f"raw/{timestamp}_{count}.json"
 
-                    upload_to_s3(s3, filename, json.dumps(message.value))
+                    upload_to_s3(s3, BUCKET_NAME, filename, json.dumps(message.value))
                     logger.info(f"Saved: s3://{BUCKET_NAME}/{filename}")
                 except Exception as e:
                     logger.error(f"Failed to process message: {e}")

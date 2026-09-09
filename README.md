@@ -1,5 +1,7 @@
 # Real-Time Crypto & Metals Data Pipeline
 
+![CI](https://github.com/DenitsaNes/Kafka-stock-market/actions/workflows/ci.yml/badge.svg)
+
 An end-to-end streaming data pipeline that ingests real-time market data, stores it in a data lake on AWS S3, and visualizes live prices in a Streamlit dashboard. The optional batch layer converts raw S3 JSON files into Apache Parquet for efficient SQL analytics with Amazon Athena.
 
 > Built as a portfolio project for a junior data engineering role.
@@ -41,10 +43,14 @@ graph LR
 
 ```text
 kafka-stock-market-portfolio/
+├── .github/
+│   └── workflows/
+│       └── ci.yml               # GitHub Actions CI
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
 ├── schema.py                    # Pydantic schema for MarketTradeEvent
+├── tests/                       # pytest test suite
 ├── producers/
 │   ├── finnhub_producer.py      # Streams BTC from Finnhub → Kafka (keyed by symbol)
 │   └── demo_metals_producer.py  # Streams synthetic metals → Kafka (keyed by symbol)
@@ -294,6 +300,19 @@ Running this stack on AWS can incur charges:
 - Athena queries: pay-per-scan (~$5/TB).
 
 Remember to run `scripts/stop_all.sh` and delete the EC2 instance when not needed.
+
+---
+
+## Running Tests
+
+Tests run with `pytest` and do not require Kafka or AWS to be running.
+
+```bash
+pip install -r requirements.txt
+pytest tests/ -v
+```
+
+GitHub Actions runs the test suite on Python 3.10, 3.11, and 3.12 on every push to `main`.
 
 ---
 
