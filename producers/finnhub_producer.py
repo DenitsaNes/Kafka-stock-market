@@ -20,7 +20,7 @@ if not API_KEY:
     raise ValueError("FINNHUB_API_KEY environment variable is not set")
 
 KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'localhost:9092')
-KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'demo_test')
+KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'market.trades.raw')
 
 FINNHUB_RECONNECT_DELAY = 5
 KAFKA_RECONNECT_DELAY = 5
@@ -73,7 +73,17 @@ def on_message(ws, message):
         record = event.to_dict()
         key = record['symbol'].encode('utf-8')
         try:
-            producer.send(KAFKA_TOPIC, key=key, value=record)
+            future = producer.send(KAFKA_TOPIC, key=key, value=record)
+            future.add_callback(
+                lambda metadata, record=record: logger.debug(
+                    f"Kafka ack: {record['symbol']} → partition {metadata.partition}, offset {metadata.offset}"
+                )
+            )
+            future.add_errback(
+                lambda exc, record=record: logger.error(
+                    f"Kafka rejected {record}: {exc}"
+                )
+            )
         except Exception as e:
             logger.error(f"Failed to send to Kafka: {e}")
 

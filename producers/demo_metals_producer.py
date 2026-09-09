@@ -16,7 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'localhost:9092')
-KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'demo_test')
+KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'market.trades.raw')
 
 KAFKA_RECONNECT_DELAY = 5
 
@@ -74,8 +74,17 @@ while True:
         record = event.to_dict()
         key = record['symbol'].encode('utf-8')
         try:
-            producer.send(KAFKA_TOPIC, key=key, value=record)
-            logger.info(f"Sent demo: {record}")
+            future = producer.send(KAFKA_TOPIC, key=key, value=record)
+            future.add_callback(
+                lambda metadata, record=record: logger.info(
+                    f"Kafka ack: {record['symbol']} → partition {metadata.partition}, offset {metadata.offset}"
+                )
+            )
+            future.add_errback(
+                lambda exc, record=record: logger.error(
+                    f"Kafka rejected {record}: {exc}"
+                )
+            )
         except Exception as e:
             logger.error(f"Failed to send to Kafka: {e}")
             producer = create_producer()

@@ -19,7 +19,7 @@ if not BUCKET_NAME:
     raise ValueError("S3_BUCKET_NAME environment variable is not set")
 
 KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'localhost:9092')
-KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'demo_test')
+KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'market.trades.raw')
 DLQ_TOPIC = f"{KAFKA_TOPIC}.dlq"
 
 BASE_DELAY = 1

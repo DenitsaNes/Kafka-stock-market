@@ -1,10 +1,8 @@
-# Real-Time Market Data Platform
+# Real-Time Crypto & Metals Data Pipeline
 
 ![CI](https://github.com/DenitsaNes/Kafka-stock-market/actions/workflows/ci.yml/badge.svg)
 
-An end-to-end streaming data pipeline that ingests real-time market data, stores it in a data lake on AWS S3, and visualizes live prices in a Streamlit dashboard. The optional batch layer converts raw S3 JSON files into Apache Parquet for efficient SQL analytics with Amazon Athena.
-
-> Built as a portfolio project for a junior data engineering role.
+A production-inspired real-time market data platform demonstrating event streaming, cloud object storage, analytical processing, and real-time visualization. It ingests live BTC trades from Finnhub and synthetic precious-metals ticks, streams them through Apache Kafka, persists them to AWS S3, and serves live dashboards via Streamlit. The optional batch layer converts raw S3 JSON files into Apache Parquet for efficient SQL analytics with Amazon Athena.
 
 ---
 
@@ -14,7 +12,7 @@ An end-to-end streaming data pipeline that ingests real-time market data, stores
 graph LR
     A[Finnhub WebSocket] -->|BTC trades| B[Finnhub Producer]
     C[Demo Metals Producer] -->|synthetic metals| B
-    B -->|key=symbol| D[Kafka topic: demo_test, 4 partitions]
+    B -->|key=symbol| D[Kafka topic: market.trades.raw, 4 partitions]
     D --> E[S3 Sink Consumer]
     E --> F[(AWS S3 raw JSON)]
     F --> G[Parquet Conversion Script]
@@ -61,7 +59,7 @@ real-time-market-data-platform/
 └── scripts/
     ├── start_all.sh             # Start all services
     ├── stop_all.sh              # Stop all services
-    ├── create_topic.py          # Create demo_test topic (4 partitions) + DLQ topic
+    ├── create_topic.py          # Create market.trades.raw topic (4 partitions) + DLQ topic
     └── s3_json_to_parquet.py    # Batch conversion to Parquet
 ```
 
@@ -107,7 +105,7 @@ Create a `.env` file on the EC2 instance (never commit this):
 FINNHUB_API_KEY=your_finnhub_api_key
 S3_BUCKET_NAME=your_s3_bucket_name
 KAFKA_BROKER=localhost:9092
-KAFKA_TOPIC=demo_test
+KAFKA_TOPIC=market.trades.raw
 ```
 
 ---
@@ -138,7 +136,7 @@ bash scripts/start_all.sh
 This starts, in order:
 1. Zookeeper
 2. Kafka broker
-3. Kafka topic `demo_test` (4 partitions)
+3. Kafka topic `market.trades.raw` (4 partitions)
 4. Finnhub BTC producer
 5. Demo metals producer
 6. S3 sink consumer
@@ -293,13 +291,13 @@ LIMIT 20;
 
 ## Cost Warning
 
-Running this stack on AWS can incur charges:
+Running this stack on AWS can incur charges. AWS pricing and free-tier eligibility change over time, so always check the current AWS pricing pages before launching resources:
 
-- EC2 t2.micro: free tier eligible for 12 months.
-- S3 storage: cheap for small volumes.
-- Athena queries: pay-per-scan (~$5/TB).
+- EC2 instance: charged by the hour while the instance is running.
+- S3 storage and requests: charged based on storage size, object count, and data transfer.
+- Athena queries: pay-per-scan (~$5/TB at the time of writing).
 
-Remember to run `scripts/stop_all.sh` and delete the EC2 instance when not needed.
+To avoid unexpected charges, run `scripts/stop_all.sh` and terminate the EC2 instance when it is not in use.
 
 ---
 

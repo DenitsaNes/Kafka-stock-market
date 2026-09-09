@@ -18,7 +18,7 @@ st.title("₿💰 Real-time Crypto & Metals Dashboard")
 st.caption("Live data from Kafka • updates every 5 seconds")
 
 KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'localhost:9092')
-KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'demo_test')
+KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'market.trades.raw')
 
 metrics_placeholder = st.empty()
 charts_placeholder = st.empty()

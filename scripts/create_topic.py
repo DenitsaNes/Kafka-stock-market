@@ -3,7 +3,7 @@ import sys
 from kafka.admin import KafkaAdminClient, NewTopic
 
 KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'localhost:9092')
-KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'demo_test')
+KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'market.trades.raw')
 DLQ_TOPIC = f"{KAFKA_TOPIC}.dlq"
 
 def create_topic(admin, name, partitions, replication_factor=1):
