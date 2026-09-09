@@ -53,7 +53,9 @@ def process_date(date_str):
         return
 
     records = []
-    for key in keys:
+    for i, key in enumerate(keys):
+        if i > 0 and i % 50 == 0:
+            print(f"Downloaded {i}/{len(keys)} raw files...")
         response = s3.get_object(Bucket=BUCKET_NAME, Key=key)
         value = json.loads(response['Body'].read().decode('utf-8'))
         records.extend(parse_message(value))

@@ -155,6 +155,9 @@ tail -f ~/kafka.log ~/bitcoin_producer.log ~/s3_consumer.log ~/dashboard.log
 ### 1. Run the conversion script
 
 ```bash
+set -a
+source ~/.env
+set +a
 python3 scripts/s3_json_to_parquet.py
 ```
 
