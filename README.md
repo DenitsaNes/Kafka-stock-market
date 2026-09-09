@@ -12,7 +12,7 @@ An end-to-end streaming data pipeline that ingests real-time market data, stores
 graph LR
     A[Finnhub WebSocket] -->|BTC trades| B[Finnhub Producer]
     C[Demo Metals Producer] -->|synthetic metals| B
-    B --> D[Kafka topic: demo_test]
+    B -->|key=symbol| D[Kafka topic: demo_test, 4 partitions]
     D --> E[S3 Sink Consumer]
     E --> F[(AWS S3 raw JSON)]
     F --> G[Parquet Conversion Script]
@@ -45,15 +45,16 @@ kafka-stock-market-portfolio/
 ├── README.md
 ├── requirements.txt
 ├── producers/
-│   ├── finnhub_producer.py      # Streams BTC from Finnhub → Kafka
-│   └── demo_metals_producer.py  # Streams synthetic metals → Kafka
+│   ├── finnhub_producer.py      # Streams BTC from Finnhub → Kafka (keyed by symbol)
+│   └── demo_metals_producer.py  # Streams synthetic metals → Kafka (keyed by symbol)
 ├── consumers/
-│   └── s3_consumer_boto3.py     # Kafka → S3 (raw JSON)
+│   └── s3_consumer_boto3.py     # Kafka → S3 (raw JSON), s3-sink-consumer-group
 ├── dashboard/
-│   └── dashboard.py             # Streamlit live dashboard
+│   └── dashboard.py             # Streamlit live dashboard, dashboard-consumer-group
 └── scripts/
     ├── start_all.sh             # Start all services
     ├── stop_all.sh              # Stop all services
+    ├── create_topic.py          # Create demo_test topic with 4 partitions
     └── s3_json_to_parquet.py    # Batch conversion to Parquet
 ```
 
@@ -130,10 +131,11 @@ bash scripts/start_all.sh
 This starts, in order:
 1. Zookeeper
 2. Kafka broker
-3. Finnhub BTC producer
-4. Demo metals producer
-5. S3 sink consumer
-6. Streamlit dashboard
+3. Kafka topic `demo_test` (4 partitions)
+4. Finnhub BTC producer
+5. Demo metals producer
+6. S3 sink consumer
+7. Streamlit dashboard
 
 Open the dashboard in your browser:
 

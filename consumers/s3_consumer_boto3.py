@@ -15,7 +15,8 @@ consumer = KafkaConsumer(
     KAFKA_TOPIC,
     bootstrap_servers=[KAFKA_BROKER],
     auto_offset_reset='latest',
-    value_deserializer=lambda x: json.loads(x.decode('utf-8'))
+    value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+    group_id='s3-sink-consumer-group'
 )
 
 s3 = boto3.client('s3')

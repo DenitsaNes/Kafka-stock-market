@@ -35,7 +35,8 @@ while True:
             'v': round(random.uniform(0.1, 10.0), 2)
         }
 
-        producer.send(KAFKA_TOPIC, value=data)
+        key = symbol.encode('utf-8')
+        producer.send(KAFKA_TOPIC, key=key, value=data)
         print(f"Sent demo: {data}")
 
     producer.flush()

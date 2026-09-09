@@ -21,6 +21,9 @@ nohup env KAFKA_HEAP_OPTS="-Xmx512M -Xms512M" bin/kafka-server-start.sh config/s
 echo "Waiting 30s for Kafka..."
 sleep 30
 
+echo "Creating Kafka topic (4 partitions)..."
+python3 "$PROJECT_DIR/scripts/create_topic.py"
+
 echo "Starting producers and consumers..."
 nohup python3 "$PROJECT_DIR/producers/finnhub_producer.py" > ~/bitcoin_producer.log 2>&1 &
 nohup python3 "$PROJECT_DIR/producers/demo_metals_producer.py" > ~/metals_producer.log 2>&1 &

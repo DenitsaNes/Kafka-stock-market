@@ -24,7 +24,18 @@ def on_open(ws):
 def on_message(ws, message):
     data = json.loads(message)
     print(f"Received: {data}")
-    producer.send(KAFKA_TOPIC, value=data)
+
+    # Finnhub returns a batch of trades under the 'data' key.
+    # Use the trade symbol as the Kafka key so all trades for the
+    # same symbol land in the same partition.
+    if isinstance(data, dict) and 'data' in data and isinstance(data['data'], list):
+        for trade in data['data']:
+            key = trade.get('s', 'unknown').encode('utf-8')
+            producer.send(KAFKA_TOPIC, key=key, value=trade)
+    else:
+        key = data.get('s', 'unknown').encode('utf-8')
+        producer.send(KAFKA_TOPIC, key=key, value=data)
+
     producer.flush()
 
 
