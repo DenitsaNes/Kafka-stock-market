@@ -64,8 +64,13 @@ kafka-stock-market-portfolio/
 ### Live Dashboard
 ![Dashboard](assets/dashboard.png)
 
+### Live Dashboard with Multiple Assets
+![Dashboard 2](assets/dashboard2.png)
+
 ### Athena Query
 ![Athena](assets/athena.png)
+
+More advanced Athena analysis is shown in the [Advanced Analysis](#4-advanced-analysis) section.
 
 ---
 
@@ -196,7 +201,7 @@ Or use an AWS Glue Crawler pointing to `s3://YOUR_BUCKET_NAME/parquet/` to auto-
 
 ### 3. Sample Athena Queries
 
-Latest 10 trades:
+#### Latest 10 trades
 
 ```sql
 SELECT symbol, price, volume, event_time
@@ -205,7 +210,7 @@ ORDER BY event_time DESC
 LIMIT 10;
 ```
 
-Average BTC price per minute:
+#### Average BTC price per minute
 
 ```sql
 SELECT date_trunc('minute', event_time) AS minute,
@@ -216,6 +221,64 @@ WHERE symbol = 'BINANCE:BTCUSDT'
 GROUP BY 1
 ORDER BY 1 DESC;
 ```
+
+### 4. Advanced Analysis
+
+These queries use window functions and ranking to answer real business questions.
+
+#### Which assets traded the most?
+
+```sql
+SELECT symbol,
+       count(*) AS trade_count,
+       round(avg(price), 2) AS avg_price,
+       round(sum(volume), 6) AS total_volume,
+       round(max(price) - min(price), 2) AS price_spread,
+       RANK() OVER (ORDER BY count(*) DESC) AS activity_rank
+FROM stock_market.trades
+GROUP BY symbol
+ORDER BY activity_rank;
+```
+
+![Asset ranking](assets/athena_ranking.png)
+
+#### Which minute had the highest trading volume?
+
+```sql
+SELECT date_trunc('minute', event_time) AS minute,
+       symbol,
+       count(*) AS trade_count,
+       round(sum(volume), 2) AS total_volume,
+       round(avg(price), 2) AS avg_price
+FROM stock_market.trades
+GROUP BY date_trunc('minute', event_time), symbol
+ORDER BY sum(volume) DESC
+LIMIT 15;
+```
+
+![Top minutes by volume](assets/athena_volume.png)
+
+#### How much does Bitcoin price jump between trades?
+
+```sql
+WITH btc_trades AS (
+  SELECT event_time,
+         price,
+         lag(price) OVER (ORDER BY event_time) AS prev_price
+  FROM stock_market.trades
+  WHERE symbol = 'BINANCE:BTCUSDT'
+)
+SELECT event_time,
+       price,
+       round(price - prev_price, 4) AS price_change,
+       round((price - prev_price) / prev_price * 100, 6) AS change_pct
+FROM btc_trades
+WHERE prev_price IS NOT NULL
+ORDER BY event_time DESC
+LIMIT 20;
+```
+
+![Bitcoin price change between trades](assets/athena_price_change.png)
 
 ---
 
