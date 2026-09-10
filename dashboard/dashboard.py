@@ -83,9 +83,10 @@ while True:
         charts_placeholder.empty()
 
         with metrics_placeholder.container():
-            symbols = list(prices_by_symbol.keys())
+            symbols = sorted(prices_by_symbol.keys())
             cols = st.columns(min(len(symbols), 5))
-            for i, (symbol, prices) in enumerate(prices_by_symbol.items()):
+            for i, symbol in enumerate(symbols):
+                prices = prices_by_symbol[symbol]
                 if len(prices) > 0:
                     latest = prices[-1]
                     col_idx = i % len(cols)
@@ -105,7 +106,8 @@ while True:
                         )
 
         with charts_placeholder.container():
-            for i, (symbol, prices) in enumerate(prices_by_symbol.items()):
+            for i, symbol in enumerate(sorted(prices_by_symbol.keys())):
+                prices = prices_by_symbol[symbol]
                 if len(prices) > 1:
                     price_list = list(prices)
                     min_price = min(price_list)
